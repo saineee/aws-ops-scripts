@@ -3,6 +3,7 @@
 import boto3
 import logging
 from botocore.exceptions import BotoCoreError, ClientError
+from botocore.config import Config
 import sys
 import argparse
 
@@ -36,7 +37,7 @@ def main():
 
         logging.info(f"Account: {sts_caller['Account']} Arn: {sts_caller['Arn']}")
 
-        ec2 = boto3.client("ec2", region_name=args.region)
+        ec2 = boto3.client("ec2", region_name=args.region, config=Config(retries={"max_attempts": 10, "mode": "standard"}))
         paginator = ec2.get_paginator("describe_instances")
 
         to_stop = []
@@ -45,7 +46,7 @@ def main():
             for reservation in page["Reservations"]:
                 for instance in reservation["Instances"]:
                     tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
-                    if "Owner" in tags or "aws:autoscaling:groupName" in tags:
+                    if ("Owner" in tags and tags["Owner"] != "") or "aws:autoscaling:groupName" in tags:
                         continue
 
                     to_stop.append((instance["InstanceId"], tags.get("Name", "-")))
@@ -66,13 +67,16 @@ def main():
                 if confirmation != "yes":
                     logging.warning("aborting")
                     sys.exit(0)
-                else:
-                    logging.info("starting stop process...")
 
             stop = [instance_id for instance_id, name in to_stop]
-            ec2.stop_instances(InstanceIds=stop)
-            for instance_id in stop:
-                logging.info(f"Stopped {instance_id}")
+            resp = ec2.stop_instances(InstanceIds=stop)
+            logging.info("stop requested")
+
+            for item in resp["StoppingInstances"]:
+                instance_id = item["InstanceId"]
+                prev_state = item["PreviousState"]["Name"]
+                state = item["CurrentState"]["Name"]
+                logging.info(f"stop requested for {instance_id}, previous state: {prev_state} -> current state: {state}")
         else:
             for instance_id, name in to_stop:
                 print(f"DRY RUN: would stop {instance_id} {name}")
