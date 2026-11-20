@@ -31,6 +31,9 @@ try:
 
     for page in paginator.paginate(OwnerIds=["self"]):
         for snapshot in page["Snapshots"]:
+            tags = {tag["Key"]: tag["Value"] for tag in snapshot.get("Tags", [])}
+            if tags.get("Retain") == "true":
+                continue
             creation = snapshot["StartTime"]
             if creation < cutoff:
                 delta = (now - creation).days
