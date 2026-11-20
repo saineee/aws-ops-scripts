@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 import argparse
 import boto3
 import sys
@@ -16,11 +17,14 @@ parser.add_argument("--yes", action="store_true", help="intended for force apply
 
 args = parser.parse_args()
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.getLogger("botocore").setLevel(logging.WARNING)
+
 if args.apply and args.expected_account is None:
     parser.error("when using --apply, you must use --expected-account")
 
 if args.days < 0:
-    print(f"--days must be a non-negative integer", file=sys.stderr)
+    logging.error(f"--days must be a non-negative integer")
     sys.exit(2)
 
 now = datetime.now(timezone.utc)
@@ -29,6 +33,7 @@ cutoff = now - timedelta(days=args.days)
 total_gb = 0
 to_delete = []
 count = 0
+deleted = 0
 
 try:
     sts = boto3.client("sts")
@@ -37,15 +42,15 @@ try:
     arn = sts_res["Arn"]
 
     if args.expected_account and args.expected_account != acc:
-        print(f"expected account: {args.expected_account} does not match actual account: {acc}", file=sys.stderr)
+        logging.error(f"expected account: {args.expected_account} does not match actual account: {acc}")
         sys.exit(2)
 
-    print(f"running script as {arn}", file=sys.stderr)
+    logging.info(f"running script as {arn}")
 
     ec2 = boto3.client("ec2", region_name=args.region)
     paginator = ec2.get_paginator("describe_snapshots")
     
-    print(f"searching {args.region}...", file=sys.stderr)
+    logging.info(f"searching {args.region}...")
 
     for page in paginator.paginate(OwnerIds=["self"]):
         for snapshot in page["Snapshots"]:
@@ -67,27 +72,41 @@ try:
                 if not args.yes:
                     confirmation = input("This action will remove the selected snapshots. 'yes' to confirm. ")
                     if confirmation != "yes":
-                        print("aborting...", file=sys.stderr)
+                        logging.warning("aborting...")
                         sys.exit(0)
 
                 for snap in to_delete:
-                    print(f"requesting deletion for {snap}", file=sys.stderr)
-                    ec2.delete_snapshot(SnapshotId=snap)
-                    print(f"{snap} - deleted", file=sys.stderr)
+                    try:
+                        logging.info(f"requesting deletion for {snap}")
+                        ec2.delete_snapshot(SnapshotId=snap)
+                        logging.info(f"{snap} - deleted")
+                        deleted += 1
+
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] == "InvalidSnapshot.InUse":
+                            logging.warning(e.response["Error"]["Message"])
+                        else:
+                            logging.error(e.response["Error"]["Message"])
+            
+                failed = len(to_delete) - deleted
+                logging.info(f"deleted {deleted}, failed {failed}")
+
+                if failed:
+                    sys.exit(2)
 
                 sys.exit(0)
 
             except EOFError:
-                print(f"\nuse --yes when running this script for unattended runs", file=sys.stderr)
+                logging.error(f"\nuse --yes when running this script for unattended runs")
                 sys.exit(2)
 
 except (BotoCoreError, ClientError) as e:
-    print(e, file=sys.stderr)
+    logging.error(e)
     sys.exit(2)
 
 if count:
-    print(f"{count} snapshots older than {args.days} days, {total_gb} GB total", file=sys.stderr)
+    logging.info(f"{count} snapshots older than {args.days} days, {total_gb} GB total")
     sys.exit(1)
 else:
-    print(f"no snapshots found older than {args.days} days", file=sys.stderr)
+    logging.warning(f"no snapshots found older than {args.days} days")
     sys.exit(0)
