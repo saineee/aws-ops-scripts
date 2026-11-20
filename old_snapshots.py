@@ -20,7 +20,8 @@ if args.days < 0:
 now = datetime.now(timezone.utc)
 cutoff = now - timedelta(days=args.days)
 
-found = False
+total_gb = 0
+count = 0
 
 try:
     ec2 = boto3.client("ec2", region_name=args.region)
@@ -33,15 +34,17 @@ try:
             creation = snapshot["StartTime"]
             if creation < cutoff:
                 delta = (now - creation).days
-                found = True
                 print(f"{snapshot['SnapshotId']} - {snapshot.get('VolumeId', 'N/A')} - {delta} days old - {snapshot['VolumeSize']} GB")
+                count += 1
+                total_gb += snapshot["VolumeSize"]
                 
 except (BotoCoreError, ClientError) as e:
     print(e, file=sys.stderr)
     sys.exit(2)
 
-if found:
+if count:
+    print(f"{count} snapshots older than {args.days} days, {total_gb} GB total", file=sys.stderr)
     sys.exit(1)
 else:
-    print("no snapshots found", file=sys.stderr)
+    print(f"no snapshots found older than {args.days} days", file=sys.stderr)
     sys.exit(0)
