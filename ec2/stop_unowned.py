@@ -46,7 +46,7 @@ def main():
             for reservation in page["Reservations"]:
                 for instance in reservation["Instances"]:
                     tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
-                    if ("Owner" in tags and tags["Owner"] != "") or "aws:autoscaling:groupName" in tags:
+                    if tags.get("Owner", "").strip() or "aws:autoscaling:groupName" in tags:
                         continue
 
                     to_stop.append((instance["InstanceId"], tags.get("Name", "-")))

@@ -6,7 +6,7 @@ them to.
 
 | Tool | What it does |
 |---|---|
-| [ec2/stop_unowned.py](ec2/) | Stops running EC2 instances with no `Owner` tag |
+| [ec2/stop_unowned.py](ec2/) | Stops running EC2 instances with no real `Owner` tag |
 | [ebs/old_snapshots.py](ebs/) | Finds old EBS snapshots and can clean them up |
 
 ## How they all work
@@ -17,7 +17,7 @@ them to.
 - They log the account they're running as, with timestamps on everything.
 - Credentials come from the normal boto3 chain, a profile or a role. No keys in the code.
 - List calls use paginators, so big accounts are fine.
-- Exit codes: `0` ok, `1` a check found something, `2` couldn't run or something failed.
+- Exit codes: `0` ok, `2` couldn't run or something failed. `old_snapshots.py` also exits `1` when the check finds old snapshots, so a scheduler can flag it.
 
 ## Setup
 
