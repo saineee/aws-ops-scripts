@@ -69,38 +69,38 @@ def main():
                     total_gb += snapshot["VolumeSize"]
                     to_delete.append(snapshot["SnapshotId"])
 
-            if args.apply and count:
-                try:
-                    if not args.yes:
-                        confirmation = input("This action will remove the selected snapshots. 'yes' to confirm. ")
-                        if confirmation != "yes":
-                            logging.warning("aborting...")
-                            sys.exit(0)
+        if args.apply and count:
+            try:
+                if not args.yes:
+                    confirmation = input("This action will remove the selected snapshots. 'yes' to confirm. ")
+                    if confirmation != "yes":
+                        logging.warning("aborting...")
+                        sys.exit(0)
 
-                    for snap in to_delete:
-                        try:
-                            logging.info(f"requesting deletion for {snap}")
-                            ec2.delete_snapshot(SnapshotId=snap)
-                            logging.info(f"{snap} - deleted")
-                            deleted += 1
+                for snap in to_delete:
+                    try:
+                        logging.info(f"requesting deletion for {snap}")
+                        ec2.delete_snapshot(SnapshotId=snap)
+                        logging.info(f"{snap} - deleted")
+                        deleted += 1
 
-                        except ClientError as e:
-                            if e.response["Error"]["Code"] == "InvalidSnapshot.InUse":
-                                logging.warning(e.response["Error"]["Message"])
-                            else:
-                                logging.error(e.response["Error"]["Message"])
-                
-                    failed = len(to_delete) - deleted
-                    logging.info(f"deleted {deleted}, failed {failed}")
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] == "InvalidSnapshot.InUse":
+                            logging.warning(e.response["Error"]["Message"])
+                        else:
+                            logging.error(e.response["Error"]["Message"])
+            
+                failed = len(to_delete) - deleted
+                logging.info(f"deleted {deleted}, failed {failed}")
 
-                    if failed:
-                        sys.exit(2)
-
-                    sys.exit(0)
-
-                except EOFError:
-                    logging.error(f"\nuse --yes when running this script for unattended runs")
+                if failed:
                     sys.exit(2)
+
+                sys.exit(0)
+
+            except EOFError:
+                logging.error(f"\nuse --yes when running this script for unattended runs")
+                sys.exit(2)
 
     except (BotoCoreError, ClientError) as e:
         logging.error(e)
