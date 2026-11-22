@@ -41,3 +41,18 @@ def test_retain_protects_from_find_old_snapshots():
 
     assert len(found) == 1
     assert found[0]["SnapshotId"] == snap_id
+
+@mock_aws
+def test_new_snapshot_not_found():
+    ec2 = boto3.client("ec2")
+
+    vol = ec2.create_volume(AvailabilityZone=f"{ec2.meta.region_name}a", Size=1)
+    ec2.create_snapshot(VolumeId=vol["VolumeId"])
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=1)
+
+    found = find_old_snapshots(ec2, cutoff)
+
+    assert len(found) == 0
+
