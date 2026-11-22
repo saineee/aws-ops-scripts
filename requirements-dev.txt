@@ -1,0 +1,3 @@
+pytest
+moto[ec2,sts]
+os
