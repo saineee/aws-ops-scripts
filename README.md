@@ -1,24 +1,31 @@
 # aws-ops-scripts
 
-Python and boto3 scripts for routine AWS cleanup work. I built these to be safe to
-point at a real account, so they don't change anything unless you explicitly tell
-them to.
+Some Python + boto3 scripts I use to clean up AWS accounts. The whole idea is that
+they're safe to point at a real account. They won't touch anything unless you
+actually tell them to.
 
-| Tool                         | What it does                                         |
-|------------------------------|------------------------------------------------------|
-| [ec2/stop_unowned.py](ec2/)  | Stops running EC2 instances with no real `Owner` tag |
-| [ebs/old_snapshots.py](ebs/) | Finds old EBS snapshots and can clean them up        |
+| Tool | What it does |
+|---|---|
+| [ec2/stop_unowned.py](ec2/) | Stops running EC2 instances nobody's claimed with an `Owner` tag |
+| [ebs/old_snapshots.py](ebs/) | Finds old EBS snapshots and can clean them up |
 
-## How they all work
+## How they work
 
-- Dry run by default. Nothing changes without `--apply`.
-- `--apply` requires `--expected-account`, so you can't change things in the wrong account by accident.
-- They ask for confirmation before acting, and `--yes` skips that for unattended runs.
-- They log the account they're running as, with timestamps on everything.
-- Credentials come from the normal boto3 chain, a profile or a role. No keys in the code.
-- List calls use paginators, so big accounts are fine.
-- Exit codes: `0` ok, `2` couldn't run or something failed. `old_snapshots.py` also exits `1` when the check finds old
-  snapshots, so a scheduler can flag it.
+Both scripts play by the same rules:
+
+- Dry run by default. Nothing happens until you add `--apply`.
+- `--apply` won't go without `--expected-account`, so you can't wreck the wrong account by accident.
+- They ask before doing anything. `--yes` skips that for stuff like cron.
+- They log which account they're running as, with timestamps.
+- Credentials come from your profile or role, never hardcoded.
+- They page through everything, so big accounts are no big deal.
+- Exit codes: `0` is good, `2` means it couldn't run or something broke. `old_snapshots.py` also exits `1` when it finds old snapshots, so a scheduler can pick that up.
+
+## Testing
+
+Tests fake AWS with `moto`, so they don't need a real account and can't mess
+anything up. GitHub Actions runs them on every PR, and nothing lands in `main`
+without a PR and green tests.
 
 ## Setup
 
@@ -26,4 +33,9 @@ them to.
     source .venv/bin/activate
     pip install -r requirements.txt
 
-Each folder has its own README with the details.
+Want to run the tests too?
+
+    pip install -r requirements-dev.txt
+    pytest
+
+Each folder has its own README if you want the details.
