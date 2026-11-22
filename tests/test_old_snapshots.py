@@ -56,3 +56,17 @@ def test_new_snapshot_not_found():
 
     assert len(found) == 0
 
+@mock_aws
+def test_delete_snapshots_delete_old_snapshot():
+    ec2 = boto3.client("ec2")
+
+    vol = ec2.create_volume(AvailabilityZone=f"{ec2.meta.region_name}a", Size=1)
+    snap = ec2.create_snapshot(VolumeId=vol["VolumeId"])
+
+    deleted, failed = delete_snapshots(ec2, [snap])
+
+    assert deleted == 1
+    assert failed == 0
+
+    desc =  ec2.describe_snapshots(OwnerIds=["self"])
+    assert len(desc["Snapshots"]) == 0
