@@ -13,12 +13,12 @@ just replace it.
     ./stop_unowned.py --apply --expected-account 111111111111         # asks before stopping
     ./stop_unowned.py --apply --expected-account 111111111111 --yes   # unattended runs
 
-| Flag | What it does |
-|---|---|
-| `--region` | Region to check, `us-east-1` by default |
-| `--apply` | Actually stops them. Requires `--expected-account`. |
-| `--expected-account` | Refuses to run if your credentials point at a different account |
-| `--yes` | Skips the confirmation prompt for cron and other unattended runs |
+| Flag                 | What it does                                                     |
+|----------------------|------------------------------------------------------------------|
+| `--region`           | Region to check, `us-east-1` by default                          |
+| `--apply`            | Actually stops them. Requires `--expected-account`.              |
+| `--expected-account` | Refuses to run if your credentials point at a different account  |
+| `--yes`              | Skips the confirmation prompt for cron and other unattended runs |
 
 It sends one batched stop request and logs each instance's state change straight
 from AWS, like `running -> stopping`.
