@@ -12,7 +12,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Script to find EBS Snapshots older than N days (default 30), in N region (default us-east-1).")
 
-    parser.add_argument("--region", default="us-east-1", help="aws region to search")
+    parser.add_argument("--regions", nargs="+", default=[""], help="aws region to search")
     parser.add_argument("--days", default=30, type=int, help="look for ebs snapshots older than this value")
     parser.add_argument("--apply", action="store_true", help="Non dry-run: delete snapshots")
     parser.add_argument("--expected-account", help="expected account that you intend to run this against")
@@ -108,42 +108,71 @@ def main():
 
     args = parse_args()
 
+
+    count = 0
+    total_gb = 0
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=args.days)
+
+    by_region = {}
+    errors = []
+
     try:
         sts = boto3.client("sts")
         check_account(sts, args.expected_account)
 
-        ec2 = boto3.client("ec2", region_name=args.region)
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(days=args.days)
+        for region in args.regions:
+            try:
+                ec2 = boto3.client("ec2", region_name=region)
+                old = find_old_snapshots(ec2, cutoff)
 
-        old = find_old_snapshots(ec2, cutoff)
-        count = 0
-        total_gb = 0
+                if not old:
+                   logging.warning(f"({ec2.meta.region_name}) - no snapshots found older than {args.days} days")
 
-        if not old:
-           logging.warning(f"no snapshots found older than {args.days} days")
-           sys.exit(0)
+                for snap in old:
+                   creation = snap["StartTime"]
+                   delta = (now - creation).days
+                   print(f"({ec2.meta.region_name}) - {snap['SnapshotId']} - {snap.get('VolumeId', 'N/A')} - {delta} days old - {snap['VolumeSize']} GB")
+                   count += 1
+                   total_gb += snap["VolumeSize"]
 
-        for snap in old:
-           creation = snap["StartTime"]
-           delta = (now - creation).days
-           print(f"{snap['SnapshotId']} - {snap.get('VolumeId', 'N/A')} - {delta} days old - {snap['VolumeSize']} GB")
-           count += 1
-           total_gb += snap["VolumeSize"]
+                by_region[region] = old
+            except (BotoCoreError, ClientError) as e:
+                errors.append((region, e))
+                continue
 
+        if count:
+            logging.info(f"{count} snapshots - {total_gb} total GBs")
 
-        logging.info(f"{count} snapshots - {total_gb} total GBs")
+        if errors:
+            for region, error in errors:
+                logging.error(f"{region} - {error}")
+            sys.exit(2)
+
+        if not count:
+            logging.warning("no snapshots found.")
+            sys.exit(0)
 
         if not args.apply:
             sys.exit(1)
 
         confirm(args.yes)
 
-        deleted, failed = delete_snapshots(ec2, old)
+        total_deleted = 0
+        total_failed = 0
 
-        logging.info(f"deleted {deleted} - failed {failed}")
+        for region, snaps in by_region.items():
+            if not snaps:
+                continue
 
-        if failed:
+            ec2 = boto3.client("ec2", region_name=region)
+            deleted, failed = delete_snapshots(ec2, snaps)
+            total_deleted += deleted
+            total_failed += failed
+
+        logging.info(f"deleted {total_deleted} - failed {total_failed}")
+
+        if total_failed:
             sys.exit(2)
         else:
             sys.exit(0)
