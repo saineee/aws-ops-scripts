@@ -148,7 +148,7 @@ def main():
                     logging.warning(f"({ec2.meta.region_name}) - {snap['SnapshotId']} - in use")
 
                 if not to_delete:
-                    logging.warning(f"({ec2.meta_region_name}) - nothing eligible to delete")
+                    logging.warning(f"({ec2.meta.region_name}) - nothing eligible to delete")
                     continue
 
                 for snap in to_delete:
