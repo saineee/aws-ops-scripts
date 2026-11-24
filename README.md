@@ -4,10 +4,10 @@ Some Python + boto3 scripts I use to clean up AWS accounts. The whole idea is th
 they're safe to point at a real account. They won't touch anything unless you
 actually tell them to.
 
-| Tool | What it does |
-|---|---|
-| [ec2/stop_unowned.py](ec2/) | Stops running EC2 instances nobody's claimed with an `Owner` tag |
-| [ebs/old_snapshots.py](ebs/) | Finds old EBS snapshots and can clean them up |
+| Tool                         | What it does                                                             |
+|------------------------------|--------------------------------------------------------------------------|
+| [ec2/stop_unowned.py](ec2/)  | Stops running EC2 instances nobody's claimed with an `Owner` tag         |
+| [ebs/old_snapshots.py](ebs/) | Finds old EBS snapshots across one or more regions and can clean them up |
 
 ## How they work
 
@@ -19,7 +19,8 @@ Both scripts play by the same rules:
 - They log which account they're running as, with timestamps.
 - Credentials come from your profile or role, never hardcoded.
 - They page through everything, so big accounts are no big deal.
-- Exit codes: `0` is good, `2` means it couldn't run or something broke. `old_snapshots.py` also exits `1` when it finds old snapshots, so a scheduler can pick that up.
+- Exit codes: `0` is good, `2` means it couldn't run or something broke. `old_snapshots.py` also exits `1` when it finds
+  old snapshots, so a scheduler can pick that up.
 
 ## Testing
 
