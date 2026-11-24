@@ -1,7 +1,9 @@
-from ebs.old_snapshots import find_old_snapshots, delete_snapshots
+from ebs.old_snapshots import find_old_snapshots, delete_snapshots, main
 from moto import mock_aws
 from datetime import datetime, timedelta, timezone
 import boto3
+import sys
+import pytest
 
 
 @mock_aws
@@ -68,5 +70,44 @@ def test_delete_snapshots_delete_old_snapshot():
     assert deleted == 1
     assert failed == 0
 
-    desc =  ec2.describe_snapshots(OwnerIds=["self"])
+    desc = ec2.describe_snapshots(OwnerIds=["self"])
     assert len(desc["Snapshots"]) == 0
+
+@mock_aws
+def test_main_skips_ami_backed_snapshot(monkeypatch):
+    ec2 = boto3.client("ec2")
+    region = ec2.meta.region_name
+
+    vol = ec2.create_volume(AvailabilityZone=f"{region}a", Size=1)
+
+    base = ec2.create_snapshot(VolumeId=vol["VolumeId"])
+    base_id = base["SnapshotId"]
+
+    plain = ec2.create_snapshot(VolumeId=vol["VolumeId"])
+    plain_id = plain["SnapshotId"]
+
+    ami = ec2.register_image(
+        Name="test-ami",
+        RootDeviceName="/dev/xvda",
+        BlockDeviceMappings=[{"DeviceName": "/dev/xvda", "Ebs": {"SnapshotId": base_id}}],
+    )
+
+    res = ec2.describe_images(ImageIds=[ami["ImageId"]])
+    image = res["Images"][0]
+    in_use_id = image["BlockDeviceMappings"][0]["Ebs"]["SnapshotId"]
+
+    monkeypatch.setattr(sys, "argv", [
+        "old_snapshots.py", "--regions", region, "--days", "0",
+        "--apply", "--expected-account", "123456789012", "--yes",
+    ])
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+
+    res = ec2.describe_snapshots(OwnerIds=["self"])
+    remaining = {snap["SnapshotId"] for snap in res["Snapshots"]}
+
+    assert in_use_id in remaining
+    assert plain_id not in remaining
