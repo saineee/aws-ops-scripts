@@ -15,7 +15,7 @@ Both scripts play by the same rules:
 
 - Dry run by default. Nothing happens until you add `--apply`.
 - `--apply` won't go without `--expected-account`, so you can't wreck the wrong account by accident.
-- They ask before doing anything. `--yes` skips that for stuff like cron.
+- They ask before changing anything. `--yes` skips that for stuff like cron.
 - They log which account they're running as, with timestamps.
 - Credentials come from your profile or role, never hardcoded.
 - They page through everything, so big accounts are no big deal.
