@@ -157,3 +157,27 @@ def test_main_all_ami_backed_snapshots(monkeypatch):
     after = ec2.describe_snapshots(OwnerIds=["self"])["Snapshots"]
     assert len(after) == 1
     assert after[0]["SnapshotId"] == in_use_id
+
+@mock_aws
+def test_wrong_account_attempt_delete(monkeypatch):
+    ec2 = boto3.client("ec2")
+    region = ec2.meta.region_name
+
+    vol = ec2.create_volume(AvailabilityZone=f"{region}a", Size=1)
+
+    snap = ec2.create_snapshot(VolumeId=vol["VolumeId"])
+    snap_id = snap["SnapshotId"]
+
+    monkeypatch.setattr(sys, "argv", [
+        "old_snapshots.py", "--regions", region, "--days", "0",
+        "--apply", "--expected-account", "111111111111", "--yes",
+    ])
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 2
+
+    after = ec2.describe_snapshots(OwnerIds=["self"])["Snapshots"]
+    assert len(after) == 1
+    assert after[0]["SnapshotId"] == snap_id
