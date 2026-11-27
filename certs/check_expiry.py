@@ -13,6 +13,7 @@ HOSTS_FILE = Path(__file__).resolve().parent / "hosts.txt"
 WARN_DAYS = 30
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
+
 def get_days_left(host):
     ctx = ssl.create_default_context()
 
@@ -43,12 +44,22 @@ def check_host(host, warn_days):
     except OSError as e:
         return {"host": host, "status": "check_error", "details": str(e)}
 
+
 def send_alert(message):
     url = os.environ["ALERT_WEBHOOK_URL"]
 
-    resp = requests.post(url, json={"content": message}, timeout=10)
+    try:
+        resp = requests.post(url, json={"content": message}, timeout=10)
+    except requests.RequestException as e:
+        print(str(e), file=sys.stderr)
+        return False
+
     if resp.status_code != 204:
-        print(resp)
+        print(f"alert failed: {resp.status_code} {resp.text}", file=sys.stderr)
+        return False
+
+    return True
+
 
 def main():
     hosts = []
@@ -67,6 +78,7 @@ def main():
     message = "Hi"
 
     send_alert(message)
+
 
 if __name__ == "__main__":
     sys.exit(main())
