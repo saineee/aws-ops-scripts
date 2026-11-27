@@ -1,7 +1,9 @@
-# healthy
-foreflight.com
+# ok
 github.com
-google.com
+wikipedia.org
+cloudflare.com
+letsencrypt.org
+example.com
 
 # findings
 expired.badssl.com
@@ -10,6 +12,6 @@ incomplete-chain.badssl.com
 self-signed.badssl.com
 untrusted-root.badssl.com
 
-# couldn't evaluate
+# check errors
 this-host-does-not-exist.invalid
 10.255.255.1
