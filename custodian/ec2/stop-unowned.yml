@@ -1,0 +1,15 @@
+policies:
+  - name: ec2-stop-unowned
+    description: Stop running EC2 instances with a blank Owner tag, or a missing Owner tag
+    resource: aws.ec2
+    filters:
+      - "State.Name": running
+      - or:
+        - type: value
+          key: "tag:Owner"
+          value: empty
+        - type: value
+          key: "tag:owner"
+          op: regex
+          value: '^\s*$'
+
