@@ -1,0 +1,15 @@
+# healthy
+foreflight.com
+github.com
+google.com
+
+# findings
+expired.badssl.com
+wrong.host.badssl.com
+incomplete-chain.badssl.com
+self-signed.badssl.com
+untrusted-root.badssl.com
+
+# couldn't evaluate
+this-host-does-not-exist.invalid
+10.255.255.1
