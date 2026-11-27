@@ -1,0 +1,12 @@
+policies:
+  - name: ec2-require-imdsv2
+    description: Report EC2 instances that allow IMDSv1 (HttpTokens optional) with the metadata endpoint enabled
+    resource: aws.ec2
+    filters:
+      - type: value
+        key: "MetadataOptions.HttpTokens"
+        value: optional
+      - type: value
+        key: "MetadataOptions.HttpEndpoint"
+        value: enabled
+

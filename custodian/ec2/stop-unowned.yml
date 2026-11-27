@@ -9,7 +9,7 @@ policies:
           key: "tag:Owner"
           value: empty
         - type: value
-          key: "tag:owner"
+          key: "tag:Owner"
           op: regex
           value: '^\s*$'
 
