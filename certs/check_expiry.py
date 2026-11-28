@@ -2,6 +2,7 @@
 
 import socket
 import ssl
+from collections import defaultdict
 import time
 import os
 import sys
@@ -9,6 +10,7 @@ import requests
 from pathlib import Path
 from dotenv import load_dotenv
 
+PROBLEMS = ["warn", "findings", "check_error"]
 HOSTS_FILE = Path(__file__).resolve().parent / "hosts.txt"
 WARN_DAYS = 30
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -60,9 +62,15 @@ def send_alert(message):
 
     return True
 
+def build_message(results):
+
+    has_problems = any(results[s] for s in PROBLEMS)
+    if not has_problems:
+        return f"Cert check: {} ok"
 
 def main():
     hosts = []
+    messages = defaultdict(list)
 
     with open(HOSTS_FILE) as f:
         for line in f:
@@ -73,7 +81,9 @@ def main():
 
     for host in hosts:
         res = check_host(host, WARN_DAYS)
-        print(f"Host: {res['host']} | Status: {res['status']} | Details: {res['details']}")
+        messages[res['status']].append(res)
+
+    built_messages = build_message(messages)
 
     message = "Hi"
 
